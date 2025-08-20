@@ -1,0 +1,6 @@
+namespace CrushMateBackendAPI.Areas.HelpPage.ModelDescriptions
+{
+    public class DictionaryModelDescription : KeyValuePairModelDescription
+    {
+    }
+}
