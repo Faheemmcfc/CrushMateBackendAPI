@@ -1,0 +1,60 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.Data.SqlClient;
+
+namespace DBFramework
+{
+    public class DBHD
+    {
+        private static string ConnectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+
+        public static DataSet ExecuteQuery_SP(string procedureName, Dictionary<string, object> parameters = null, bool useTransaction = false)
+        {
+            DataSet ds = new DataSet();
+            using (SqlConnection con = new SqlConnection(ConnectionString))
+            {
+                con.Open();
+                SqlTransaction transaction = null;
+                try
+                {
+                    if (useTransaction)
+                        transaction = con.BeginTransaction();
+
+                    using (SqlCommand cmd = new SqlCommand(procedureName, con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        if (transaction != null)
+                            cmd.Transaction = transaction;
+
+                        // Add parameters if provided
+                        if (parameters != null)
+                        {
+                            foreach (var param in parameters)
+                            {
+                                cmd.Parameters.AddWithValue(param.Key, param.Value ?? DBNull.Value);
+                            }
+                        }
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+                        {
+                            adapter.Fill(ds);
+                        }
+                    }
+                    // Commit if transaction is used
+                    transaction?.Commit();
+                }
+                catch (Exception ex)
+                {
+                    // Rollback on error
+                    if (transaction != null)
+                    {
+                        try { transaction.Rollback(); } catch { }
+                    }
+                    throw new Exception("Error executing stored procedure " + procedureName, ex);
+                }
+            }
+            return ds;
+        }
+    }
+}
